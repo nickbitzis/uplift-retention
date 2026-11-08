@@ -39,9 +39,9 @@ jobs:
         run: docker build -t uplift-retention:ci .
       - name: Smoke test the container
         run: |
-          docker run -d --name uplift -p 8830:8830 uplift-retention:ci
+          docker run -d --name uplift -e UPLIFT_N=20000 -p 8830:8830 uplift-retention:ci
           for i in $(seq 1 180); do curl -sf localhost:8830/healthz && break; sleep 1; done
-          curl -sf localhost:8830/healthz
+          curl -sf localhost:8830/healthz || { docker logs uplift | tail -50; exit 1; }
           curl -sf "localhost:8830/api/budget?amount=40000" | head -c 300
           curl -sf -X POST localhost:8830/api/score -H 'content-type: application/json' \
             -d '{"tenure_months":8,"plan":"premium","price_increase":1,"weekly_hours":6.5,"usage_trend":-0.1,"support_tickets":1,"payment_failures":0,"primary_genre":"drama","genre_count":3,"device_count":2,"promo_history":1}'
