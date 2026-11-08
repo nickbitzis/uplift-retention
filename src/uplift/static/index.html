@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uplift Retention</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --text: #1c2330; --muted: #5d6878; --border: #dde2e9;
+  --track: #e8ebf0; --accent: #2f6fdb; --accent-soft: #e6eefc; --good: #11804f; --good-soft: #e3f5ec;
+  --warn: #8a5a00; --warn-soft: #fff4dc; --bad: #b42318; --bad-soft: #fde8e6;
+  --c1: #b42318; --c2: #2f6fdb; --c3: #7c3aed; --c4: #11804f; --c5: #c2410c; --c6: #8b95a5;
+  --g-pers: #11804f; --g-sure: #9aa7b8; --g-lost: #d08a00; --g-dog: #b42318;
+  --radius: 10px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11151c; --panel: #181e27; --text: #e6eaf0; --muted: #9aa5b5; --border: #2a3340;
+    --track: #232b37; --accent: #6c9cf0; --accent-soft: #1c2a44; --good: #4ccb8f; --good-soft: #15302a;
+    --warn: #f3c46b; --warn-soft: #3a2e14; --bad: #ff8a7a; --bad-soft: #3b1d1b;
+    --c1: #ff8a7a; --c2: #6c9cf0; --c3: #b197fc; --c4: #4ccb8f; --c5: #f59e5b; --c6: #7d8796;
+    --g-pers: #4ccb8f; --g-sure: #5d6878; --g-lost: #f3c46b; --g-dog: #ff8a7a; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+body { margin: 0; background: var(--bg); color: var(--text); font-size: 14px; }
+header { padding: 16px 24px 4px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+p { margin: 6px 0; line-height: 1.45; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+main { padding: 8px 24px 24px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-width: 0; }
+.wide { grid-column: 1 / -1; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--bg); min-width: 0; }
+.kpi .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: 12px; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-top: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; border-top: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.hi td { background: var(--accent-soft); }
+.scroll { overflow-x: auto; max-width: 100%; }
+.neg { color: var(--bad); }
+.pos { color: var(--good); }
+svg { display: block; width: 100%; height: auto; }
+.axis text { fill: var(--muted); font-size: 11px; }
+.axis line, .axis path { stroke: var(--border); }
+.grid line { stroke: var(--track); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; margin-top: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.sq { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.bars { display: grid; gap: 8px; }
+.barrow { display: grid; grid-template-columns: minmax(0, 190px) minmax(0, 1fr); gap: 10px; align-items: center; }
+.barrow .name { font-size: 12px; overflow-wrap: anywhere; }
+.stack { display: flex; height: 18px; border-radius: 4px; overflow: hidden; background: var(--track); }
+.stack div { height: 100%; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+input[type=text] { flex: 1 1 140px; min-width: 0; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); font: inherit; }
+button { padding: 7px 12px; border: 0; border-radius: 7px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.chip { font-size: 12px; padding: 2px 9px; border-radius: 10px; background: var(--track); color: var(--text); cursor: pointer; border: 0; font-weight: 400; }
+.badge { font-size: 12px; padding: 1px 8px; border-radius: 10px; white-space: nowrap; }
+.b-persuadable { background: var(--good-soft); color: var(--good); }
+.b-sure_thing { background: var(--track); color: var(--muted); }
+.b-lost_cause { background: var(--warn-soft); color: var(--warn); }
+.b-sleeping_dog { background: var(--bad-soft); color: var(--bad); }
+.b-uncertain { background: var(--track); color: var(--muted); }
+.big { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.reason { padding: 10px; border-radius: 8px; background: var(--accent-soft); margin: 10px 0; }
+.feat { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 4px 12px; font-size: 12px; }
+.feat div { overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  main { grid-template-columns: minmax(0, 1fr); padding: 8px 16px 16px; }
+  header { padding: 16px 16px 4px; }
+  .barrow { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Uplift Retention</h1>
+  <p class="muted">Who should get a retention offer at Northlight, a made-up streaming service. 200,000 synthetic subscribers, a randomized discount campaign, and known ground truth for every customer. All numbers are on the 40,000 customer test split.</p>
+</header>
+<main>
+  <section class="panel wide"><div class="kpis" id="kpis"></div></section>
+
+  <section class="panel">
+    <h2>Qini curves (test)</h2>
+    <div id="qini"></div>
+    <div class="legend" id="qini-legend"></div>
+    <p class="small muted">Incremental customers retained by the discount as you target more of the base, ranked by each model. Highest churn risk rises early but flattens, then falls as it reaches sleeping dogs. The dashed line is random targeting.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Who each policy reaches</h2>
+    <div class="bars" id="groups"></div>
+    <div class="legend" id="group-legend"></div>
+    <p class="small muted">Each bar is the customers a policy targets, split by true group (known only because the data is synthetic). Only persuadables are worth paying for.</p>
+  </section>
+
+  <section class="panel wide">
+    <h2>Policy comparison: discount to 20% of the test set</h2>
+    <div class="scroll"><table id="policies"></table></div>
+    <p class="small muted">Net value = CLV of customers the offer actually kept, minus CLV lost from sleeping dogs it woke, minus the cost of every offer sent. The oracle targets only true persuadables, so it is the ceiling.</p>
+  </section>
+
+  <section class="panel wide">
+    <h2>Budget allocation across three offers</h2>
+    <div class="row"><label for="budget" class="small muted">Budget</label><span class="big" id="budget-v">$0</span></div>
+    <input type="range" id="budget" min="0" max="200000" step="1000" value="40000" aria-label="Budget in dollars">
+    <div class="scroll"><table id="alloc"></table></div>
+    <p class="small muted" id="alloc-note"></p>
+  </section>
+
+  <section class="panel">
+    <h2>Customer lookup</h2>
+    <div class="row"><input type="text" id="cid" placeholder="Customer id, for example C000123" aria-label="Customer id"><button id="go">Look up</button></div>
+    <div class="chips" id="samples"></div>
+    <div id="cust" class="small muted">Pick a sample above: two test customers from each true group.</div>
+  </section>
+
+  <section class="panel">
+    <h2>Follow-up test</h2>
+    <div id="exp"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const money = (v) => (v < 0 ? "-$" : "$") + Math.abs(Math.round(v)).toLocaleString();
+const int = (v) => Math.round(v).toLocaleString();
+const pct = (v, d = 1) => (v * 100).toFixed(d) + "%";
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const GROUPS = [["persuadable", "Persuadable", "--g-pers"], ["sure_thing", "Sure thing", "--g-sure"],
+  ["lost_cause", "Lost cause", "--g-lost"], ["sleeping_dog", "Sleeping dog", "--g-dog"]];
+const SERIES = { churn_risk: "--c1", t_learner: "--c2", s_learner: "--c3", x_learner: "--c4", class_transform: "--c5", random: "--c6" };
+const OFFER = { discount: "Discount", free_month: "Free month", downgrade: "Downgrade", none: "No offer" };
+let REP = null;
+
+function kpis(rep) {
+  const p = Object.fromEntries(rep.policies.map((r) => [r.policy, r]));
+  const best = ["t_learner", "s_learner", "x_learner", "class_transform"].map((k) => p[k]).sort((a, b) => b.net_value - a.net_value)[0];
+  const d = rep.data;
+  const items = [
+    [int(d.test_customers), "test customers, " + pct(d.groups.persuadable / d.test_customers) + " persuadable"],
+    [pct(d.churn_control) + " / " + pct(d.churn_treated), "churn: control / discount"],
+    [money(p.churn_risk.net_value), "net value, churn risk targeting"],
+    [money(best.net_value), "net value, " + best.label.replace("Uplift: ", "")],
+    [int(p.churn_risk.groups.lost_cause + p.churn_risk.groups.sleeping_dog), "lost causes + sleeping dogs hit by churn risk"],
+  ];
+  $("kpis").innerHTML = items.map(([v, l]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+}
+
+function qiniChart(rep) {
+  const W = 640, H = 330, L = 56, R = 12, T = 12, B = 40;
+  const curves = rep.qini.curves;
+  let ymin = 0, ymax = 0;
+  for (const c of Object.values(curves)) for (const [, y] of c) { ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }
+  ymax *= 1.05;
+  const sx = (x) => L + x * (W - L - R), sy = (y) => T + (ymax - y) / (ymax - ymin) * (H - T - B);
+  const step = Math.pow(10, Math.floor(Math.log10(ymax / 2))) * (ymax / Math.pow(10, Math.floor(Math.log10(ymax))) > 5 ? 2 : 1);
+  let g = `<g class="grid">`;
+  const ticks = [];
+  for (let v = Math.ceil(ymin / step) * step; v <= ymax; v += step) ticks.push(v);
+  for (const v of ticks) g += `<line x1="${L}" x2="${W - R}" y1="${sy(v)}" y2="${sy(v)}"/>`;
+  g += `</g><g class="axis">`;
+  for (const v of ticks) g += `<text x="${L - 6}" y="${sy(v) + 4}" text-anchor="end">${int(v)}</text>`;
+  for (let x = 0; x <= 1.0001; x += 0.2) g += `<text x="${sx(x)}" y="${H - B + 16}" text-anchor="middle">${Math.round(x * 100)}%</text>`;
+  g += `<line x1="${L}" x2="${W - R}" y1="${sy(0)}" y2="${sy(0)}"/>`;
+  g += `<text x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">share of customers targeted, best scores first</text>`;
+  g += `<text transform="translate(12 ${(T + H - B) / 2}) rotate(-90)" text-anchor="middle">incremental retained</text></g>`;
+  const order = ["random", "class_transform", "t_learner", "s_learner", "x_learner", "churn_risk"];
+  for (const k of order) {
+    const pts = curves[k].map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join(" ");
+    const dash = k === "random" ? ' stroke-dasharray="5 4"' : "";
+    const w = k === "churn_risk" || k === rep.champion ? 2.6 : 1.6;
+    g += `<polyline fill="none" stroke="var(${SERIES[k]})" stroke-width="${w}"${dash} points="${pts}"/>`;
+  }
+  $("qini").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Qini curves for each targeting model">${g}</svg>`;
+  $("qini-legend").innerHTML = rep.qini.models.map((m) =>
+    `<span><i class="sw" style="background:var(${SERIES[m.model]})"></i>${esc(m.label.replace("Uplift: ", ""))} <span class="muted">(Qini ${int(m.qini_coefficient)})</span></span>`).join("");
+}
+
+function groupBars(rows, el) {
+  const max = Math.max(...rows.map((r) => r.targeted));
+  el.innerHTML = rows.map((r) => {
+    const segs = GROUPS.map(([k, label, c]) => {
+      const n = r.groups[k];
+      return n ? `<div title="${label}: ${int(n)}" style="width:${(n / max) * 100}%;background:var(${c})"></div>` : "";
+    }).join("");
+    return `<div class="barrow"><div class="name">${esc(r.label)} <span class="muted">${int(r.targeted)}</span></div><div class="stack">${segs}</div></div>`;
+  }).join("");
+}
+
+function policyTable(rows) {
+  const best = Math.max(...rows.filter((r) => r.policy !== "oracle").map((r) => r.net_value));
+  const head = `<tr><th>Policy</th><th class="num">Targeted</th><th class="num">Cost</th><th class="num">Incremental retained</th><th class="num">Net value</th><th class="num">Persuadables</th><th class="num">Lost causes</th><th class="num">Sleeping dogs</th></tr>`;
+  $("policies").innerHTML = head + rows.map((r) => `<tr class="${r.net_value === best ? "hi" : ""}"><td>${esc(r.label)}</td>
+    <td class="num">${int(r.targeted)}</td><td class="num">${money(r.cost)}</td><td class="num">${int(r.incremental_retained)}</td>
+    <td class="num ${r.net_value < 0 ? "neg" : ""}">${money(r.net_value)}</td><td class="num">${int(r.groups.persuadable)}</td>
+    <td class="num">${int(r.groups.lost_cause)}</td><td class="num">${int(r.groups.sleeping_dog)}</td></tr>`).join("");
+}
+
+function allocTable(b) {
+  const head = `<tr><th>Allocation</th><th class="num">Targeted</th><th class="num">Spent</th><th class="num">Expected net</th><th class="num">True net</th><th class="num">Discount</th><th class="num">Free month</th><th class="num">Downgrade</th><th class="num">Sleeping dogs</th></tr>`;
+  $("alloc").innerHTML = head + b.rows.map((r, i) => `<tr class="${i === 0 ? "hi" : ""}"><td>${esc(r.label)}</td>
+    <td class="num">${int(r.targeted)}</td><td class="num">${money(r.cost)}</td><td class="num">${money(r.expected_net_value)}</td>
+    <td class="num ${r.net_value < 0 ? "neg" : ""}">${money(r.net_value)}</td><td class="num">${int(r.offers.discount)}</td>
+    <td class="num">${int(r.offers.free_month)}</td><td class="num">${int(r.offers.downgrade)}</td><td class="num">${int(r.groups.sleeping_dog)}</td></tr>`).join("");
+  const unspent = b.budget - b.rows[0].cost;
+  let note = `Greedy ran in ${b.greedy_ms} ms. `;
+  if (unspent > 1000) note += `It leaves ${money(unspent)} unspent because no other offer has positive expected value. `;
+  if (b.lp_bound) note += `LP relaxation bound: ${money(b.lp_bound)} expected, greedy reaches ${pct(b.rows[0].expected_net_value / b.lp_bound)}.`;
+  else if (b.lp_available === false) note += "scipy is not installed, so the LP check is skipped (greedy only).";
+  $("alloc-note").textContent = note;
+}
+
+let timer = null, seq = 0;
+async function loadBudget(lp) {
+  const amount = +$("budget").value;
+  $("budget-v").textContent = money(amount);
+  const my = ++seq;
+  const r = await fetch(`/api/budget?amount=${amount}&lp=${lp}`);
+  if (my !== seq || !r.ok) return;
+  allocTable(await r.json());
+}
+
+function expPanel(e) {
+  const r = e.readout;
+  const plan = e.plan.map((p) => `<tr><td class="num">${pct(p.holdout_share, 0)}</td><td class="num">${int(p.holdout)}</td><td class="num">${int(p.treated)}</td><td class="num">${int(p.total)}</td></tr>`).join("");
+  const vs = e.versus_churn_risk;
+  $("exp").innerHTML = `<p>The models expect the chosen policy to cut churn among targeted customers from <b>${pct(e.expected_churn_holdout)}</b> to <b>${pct(e.expected_churn_treated)}</b>. Customers needed to detect that (5% two-sided, 80% power):</p>
+    <div class="scroll"><table><tr><th class="num">Holdout share</th><th class="num">Holdout</th><th class="num">Treated</th><th class="num">Total</th></tr>${plan}</table></div>
+    ${vs ? `<p>A harder question is whether it beats churn risk targeting across the whole base: the expected gap is ${(vs.effect * 100).toFixed(2)} points of overall churn, which needs <b>${int(vs.total)}</b> customers split 50/50.</p>` : ""}
+    <p><b>Simulated rollout readout</b> (${int(e.rollout_customers)} new subscribers, ${pct(e.chosen_holdout_share, 0)} of the ${int(e.targeted_per_month)} targeted held out):</p>
+    <div class="scroll"><table>
+      <tr><td>Churn, holdout</td><td class="num">${pct(r.holdout.churn_rate)} of ${int(r.holdout.customers)}</td></tr>
+      <tr><td>Churn, treated</td><td class="num">${pct(r.treated.churn_rate)} of ${int(r.treated.customers)}</td></tr>
+      <tr><td>Churn reduction (95% CI)</td><td class="num">${pct(r.churn_reduction)} (${pct(r.churn_reduction_ci[0])} to ${pct(r.churn_reduction_ci[1])})</td></tr>
+      <tr><td>Incremental retained</td><td class="num">${int(r.incremental_retained)} (${int(r.incremental_retained_ci[0])} to ${int(r.incremental_retained_ci[1])})</td></tr>
+      <tr><td>Net value per targeted</td><td class="num">${money(r.net_value_per_customer)} (${money(r.net_value_per_customer_ci[0])} to ${money(r.net_value_per_customer_ci[1])})</td></tr>
+      <tr><td>True reduction (synthetic)</td><td class="num">${pct(r.true_churn_reduction)}, ${r.ci_covers_truth ? "inside" : "outside"} the interval</td></tr>
+    </table></div>`;
+}
+
+async function lookup(id) {
+  if (!id) return;
+  $("cid").value = id;
+  const r = await fetch(`/api/customers/${encodeURIComponent(id)}`);
+  if (!r.ok) { $("cust").textContent = (await r.json()).detail || "Not found."; return; }
+  const c = await r.json(), s = c.score, t = c.ground_truth;
+  const offers = s.offers.map((o) => `<tr><td>${esc(o.label)}</td><td class="num">${o.eligible ? (o.uplift * 100).toFixed(1) + " pts" : "n/a"}</td><td class="num">${money(o.cost)}</td><td class="num ${!o.eligible ? "muted" : o.expected_net_value < 0 ? "neg" : "pos"}">${o.eligible ? money(o.expected_net_value) : "n/a"}</td></tr>`).join("");
+  const f = c.features;
+  $("cust").className = "";
+  $("cust").innerHTML = `<div class="row"><span class="big">${pct(s.churn_risk, 0)}</span><span class="muted small">churn risk with no offer, CLV ${money(s.clv)}</span></div>
+    <div class="reason">${s.action === "none" ? "" : `<b>Send: ${OFFER[s.action]}.</b> `}${esc(s.reason)}</div>
+    <div class="scroll"><table><tr><th>Offer</th><th class="num">Churn cut</th><th class="num">Cost</th><th class="num">Expected net</th></tr>${offers}</table></div>
+    <p class="small">True group: <span class="badge b-${t.group}">${t.group.replace("_", " ")}</span> <span class="muted">model guess: ${esc(s.likely_group.replace("_", " "))}. True churn with no offer ${pct(t.true_churn_no_offer, 0)}, true discount effect ${(t.true_uplift.discount * 100).toFixed(1)} pts.</span></p>
+    <div class="feat muted"><div>${esc(f.plan)} plan, ${f.tenure_months} months</div><div>${f.weekly_hours} h/week, trend ${(f.usage_trend * 100).toFixed(0)}%</div><div>${f.payment_failures} payment failures</div><div>${f.support_tickets} tickets</div><div>price increase: ${f.price_increase ? "yes" : "no"}</div><div>${f.device_count} devices, ${esc(f.primary_genre)}</div></div>`;
+}
+
+async function main() {
+  REP = await (await fetch("/api/summary")).json();
+  kpis(REP);
+  qiniChart(REP);
+  const bars = REP.policies;
+  groupBars(bars, $("groups"));
+  $("group-legend").innerHTML = GROUPS.map(([, l, c]) => `<span><i class="sq" style="background:var(${c})"></i>${l}</span>`).join("");
+  policyTable(REP.policies);
+  $("budget").value = REP.budget.budget;
+  allocTable(REP.budget);
+  $("budget-v").textContent = money(REP.budget.budget);
+  $("budget").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => loadBudget(false), 120); });
+  $("budget").addEventListener("change", () => { clearTimeout(timer); loadBudget(true); });
+  expPanel(REP.experiment);
+  const samples = await (await fetch("/api/customers/sample")).json();
+  $("samples").innerHTML = samples.map((s) => `<button class="chip" data-id="${s.customer_id}">${s.customer_id} <span class="badge b-${s.true_group}">${s.true_group.replace("_", " ")}</span></button>`).join("");
+  $("samples").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) lookup(b.dataset.id); });
+  $("go").addEventListener("click", () => lookup($("cid").value.trim()));
+  $("cid").addEventListener("keydown", (e) => { if (e.key === "Enter") lookup($("cid").value.trim()); });
+  const q = new URLSearchParams(location.search).get("customer");
+  if (q) lookup(q);
+}
+main();
+</script>
+</body>
+</html>

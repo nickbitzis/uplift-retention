@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Lint
+        run: uvx ruff check .
+      - name: Test
+        run: uv run --python 3.12 --group dev pytest -q
+
+  policy-gate:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Best uplift policy must beat churn risk targeting on true net value
+        run: uv run --python 3.12 uplift eval --gate --out reports-ci
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: policy-report
+          path: reports-ci/
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t uplift-retention:ci .
+      - name: Smoke test the container
+        run: |
+          docker run -d --name uplift -p 8830:8830 uplift-retention:ci
+          for i in $(seq 1 180); do curl -sf localhost:8830/healthz && break; sleep 1; done
+          curl -sf localhost:8830/healthz
+          curl -sf "localhost:8830/api/budget?amount=40000" | head -c 300
+          curl -sf -X POST localhost:8830/api/score -H 'content-type: application/json' \
+            -d '{"tenure_months":8,"plan":"premium","price_increase":1,"weekly_hours":6.5,"usage_trend":-0.1,"support_tickets":1,"payment_failures":0,"primary_genre":"drama","genre_count":3,"device_count":2,"promo_history":1}'
+          curl -sf localhost:8830/metrics | grep uplift_recommendations_total
+          docker rm -f uplift
