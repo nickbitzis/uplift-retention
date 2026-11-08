@@ -13,6 +13,8 @@ FROM python:3.12-slim
 RUN useradd --create-home --uid 10001 uplift
 WORKDIR /app
 COPY --from=build --chown=uplift:uplift /app /app
+# The study cache lives here; the non-root user must own it.
+RUN mkdir -p /app/data && chown uplift:uplift /app/data
 USER uplift
 ENV PATH="/app/.venv/bin:$PATH" HOST=0.0.0.0 PORT=8830 UPLIFT_STUDY=/app/data/study.pkl
 EXPOSE 8830
